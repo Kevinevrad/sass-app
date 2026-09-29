@@ -6,16 +6,13 @@
   "types": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-dev --respawn src/app.ts",
-    "postinstall": "prisma skills sync || exit 0",
-    "contract:emit": "prisma contract emit"
+    "dev": "ts-node-dev --respawn src/app.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/orm-postgres": "^8.0.0-rc.13",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
@@ -23,20 +20,15 @@
     "jsonwebtoken": "^9.0.3"
   },
   "allowScripts": {
-    "bcrypt@6.0.0": true,
-    "esbuild@0.28.2": true,
-    "workerd@1.20260901.1": true
+    "bcrypt@6.0.0": true
   },
   "devDependencies": {
-    "@prisma/cli-engine": "^0.6.1",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.3",
-    "prisma": "^8.0.0-rc.17",
     "ts-node-dev": "^2.0.0",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
 }
