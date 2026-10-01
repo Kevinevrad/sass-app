@@ -1,0 +1,217 @@
+// use prisma-8
+
+// 
+//    -------- AUTH 
+// 
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id                        String       @id @default(uuid())
+  email                     String       @unique
+  passwordHash              String
+  name                      String
+  createdAt                 DateTime     @default(now())
+  updatedAt                 temporal.timestamptz(onCreate: now, onUpdate: now)
+  memberships               Membership[]
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+ 
+  @@unique([userId, companyId])
+}
+
+
+
+model Company {
+  id           String        @id @default(uuid())
+  name         String
+  createdAt    DateTime      @default(now())
+  
+  updatedAt    temporal.updatedAt()
+
+  memberships  Membership[]
+  products     Product[]
+  categories   Category[]
+  
+  clients      Client[]
+  prospects    Prospect[]
+  orders       Order[]
+  subscription Subscription?
+}
+
+// 
+// CRM
+// 
+
+enum ProspectStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  QUOTE
+  NEGOTIATION
+  CONVERTED
+  LOST
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  country   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  orders    Order[]
+}
+
+model Prospect {
+  id        String         @id @default(uuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  status    ProspectStatus @default(NEW)
+  notes     String?
+  createdAt DateTime       @default(now())
+  companyId String
+  company   Company        @relation(fields: [companyId], references: [id])
+}
+
+
+// 
+// COMMANDES
+// 
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  status    OrderStatus @default(DRAFT)
+  createdAt DateTime    @default(now())
+  updatedAt temporal.updatedAt()
+  companyId String
+  company   Company     @relation(fields: [companyId], references: [id])
+  clientId  String
+  client    Client      @relation(fields: [clientId], references: [id])
+  items     OrderItem[]
+}
+
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  unitPrice Float
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+
+// 
+// PLAN & ABONNEMENTS
+// 
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+model Plan {
+  id            String         @id @default(uuid())
+  name          String         @unique // "FREE", "STARTER", "BUSINESS"
+  maxUsers      Int
+  maxProducts   Int
+  maxClients    Int
+  maxOrders     Int
+  priceMonthly  Float
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  status    SubscriptionStatus @default(TRIALING)
+  startDate DateTime           @default(now())
+  endDate   DateTime?
+  companyId String             @unique
+  company   Company            @relation(fields: [companyId], references: [id])
+  planId    String
+  plan      Plan               @relation(fields: [planId], references: [id])
+}
+
+
+// 
+//  PRODUCTS & STOCKS
+// 
+
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  products  Product[]
+}
+
+
+model Product {
+  id             String          @id @default(uuid())
+  name           String
+  price          Float
+  unit           String          // ex: "pièce", "kg", "litre"
+  stockQuantity  Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      temporal.updatedAt()
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  categoryId     String?
+  category       Category?       @relation(fields: [categoryId], references: [id])
+  stockMovements StockMovement[]
+  orderItems     OrderItem[]
+}
+
+
+model StockMovement {
+  id        String            @id @default(uuid())
+  type      StockMovementType
+  quantity  Int
+  reason    String?
+  createdAt DateTime          @default(now())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id])
+  companyId String
+  createdBy String            // id de l'utilisateur ayant fait le mouvement
+}
