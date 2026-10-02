@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -14,6 +15,8 @@ app.get("/api/health", (req, res) => {
 app.get("/api/version", (req, res) => {
   res.json({ version: "0.1.0" });
 });
+
+app.use("/api/auth/", authRoutes);
 
 const PORT = process.env.PORT || 3000;
 

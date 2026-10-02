@@ -1,44 +1,18 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import type { SignOptions } from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { prisma } from "../libs/prisma";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-/** Durée par défaut du jeton si `JWT_EXPIRES_IN` est absent ou vide. */
-const DEFAULT_JWT_EXPIRE = "7d";
+if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined");
 
-/**
- * Formes acceptées par `ms` (la dépendance de `jsonwebtoken`) : un nombre de
- * secondes seul, ou un nombre suivi d'une unité (`d`, `days`, `h`, `ms`, ...).
- * Le séparateur peut être un espace et la casse de l'unité est libre.
- */
-const EXPIRES_IN_PATTERN = /^\d+(\.\d+)?\s*[a-z]*$/i;
+const option: SignOptions = {
+  expiresIn: "7d",
+};
 
-/**
- * `process.env` est typé `string | undefined` alors que `SignOptions["expiresIn"]`
- * attend un `ms.StringValue` (un template literal) ou un nombre de secondes : la
- * valeur brute ne compile donc pas (TS2769), et `ms()` lèverait à l'exécution sur
- * une durée mal formée. La validation ci-dessous est ce qui rend le cast final
- * sûr : le type reflète un contrôle réellement exécuté, pas un `as` nu.
- *
- * @param value Valeur brute de `JWT_EXPIRES_IN`.
- * @returns La durée validée, ou la durée par défaut si `value` est absent.
- * @throws Si `value` est renseignée mais n'est pas une durée exploitable.
- */
-function parseExpiresIn(
-  value: string | undefined,
-): NonNullable<SignOptions["expiresIn"]> {
-  const raw = value?.trim() || DEFAULT_JWT_EXPIRE;
-
-  if (!EXPIRES_IN_PATTERN.test(raw)) {
-    throw new Error(`JWT_EXPIRES_IN_INVALID:${raw}`);
-  }
-
-  return raw as NonNullable<SignOptions["expiresIn"]>;
+function generateToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_SECRET, option);
 }
-
-const JWT_EXPIRE = parseExpiresIn(process.env.JWT_EXPIRES_IN);
 
 export async function registerUser(params: {
   name: string;
@@ -90,11 +64,20 @@ export async function registerUser(params: {
   return { token, user: result.user, company: result.company };
 }
 
-function generateToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRE,
-    // Algorithme épinglé : évite toute dépendance à l'implémentation par défaut
-    // de `jsonwebtoken` au moment de la signature.
-    algorithm: "HS256",
-  });
+export async function loginUser(params: { email: string; password: string }) {
+  const user = await prisma.orm.public.User.where({
+    email: params.email,
+  }).first();
+
+  if (!user) throw new Error("INVALID_CREDENTIALS");
+
+  const passwordMatcheds = await bcrypt.compare(
+    params.password,
+    user.passwordHash,
+  );
+
+  if (!passwordMatcheds) throw new Error("INVALID_CREDENTIALS");
+
+  const token = generateToken(user.id);
+  return { token, user };
 }
